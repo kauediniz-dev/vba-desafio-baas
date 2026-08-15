@@ -7,6 +7,7 @@ import { CheckoutModule } from './modules/checkout/checkout.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
     OrdersModule,
     TransactionsModule,
     WithdrawalsModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}
