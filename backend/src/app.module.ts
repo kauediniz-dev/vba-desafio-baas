@@ -2,6 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GatewayModule } from './modules/gateway/gateway.module';
+import { UsersModule } from './modules/users/users.module';
+import { CheckoutModule } from './modules/checkout/checkout.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { TransactionsModule } from './modules/transactions/transactions.module';
+import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -24,6 +30,12 @@ import { GatewayModule } from './modules/gateway/gateway.module';
       }),
     }),
     GatewayModule,
+    UsersModule,
+    CheckoutModule,
+    OrdersModule,
+    TransactionsModule,
+    WithdrawalsModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}
