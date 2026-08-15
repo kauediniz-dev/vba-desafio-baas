@@ -5,6 +5,7 @@ import { GatewayModule } from './modules/gateway/gateway.module';
 import { UsersModule } from './modules/users/users.module';
 import { CheckoutModule } from './modules/checkout/checkout.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { TransactionsModule } from './modules/transactions/transactions.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     UsersModule,
     CheckoutModule,
     OrdersModule,
+    TransactionsModule,
   ],
 })
 export class AppModule {}
