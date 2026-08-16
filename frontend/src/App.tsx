@@ -12,7 +12,7 @@ import { CardForm } from "./components/forms/CardForm";
 import { WithdrawalForm } from "./components/forms/WithdrawalForm";
 import { QuickActions } from "./components/dashboard/QuickActions";
 import { TransactionsTable } from "./components/dashboard/TransactionsTable";
-import { Sidebar } from "./components/layout/Sidebar";
+import { TopNavigation } from "./components/layout/TopNavigation";
 import { Header } from "./components/layout/Header";
 import { BalanceCard } from "./components/dashboard/BalanceCard";
 import type {
@@ -73,8 +73,8 @@ function App() {
   const [withdrawalError, setWithdrawalError] = useState<string | null>(null);
 
   const [activeSection, setActiveSection] = useState<
-    "overview" | "pix" | "card" | "withdrawal"
-  >("overview");
+    "pix" | "card" | "withdrawal" | null
+  >(null);
 
   const [user, setUser] = useState<User | null>(() => {
     const storedUser = sessionStorage.getItem("lera-user");
@@ -362,31 +362,17 @@ function App() {
     scrollToOperation();
   }
 
-  function handleGoOverview() {
-    setIsPixOpen(false);
-    setIsCardOpen(false);
-    setIsWithdrawalOpen(false);
-
-    setActiveSection("overview");
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  }
-
   return (
     <div className="app-shell">
-      <Sidebar
+      <TopNavigation
+        user={user}
         activeSection={activeSection}
-        onOverview={handleGoOverview}
         onPix={handleOpenPix}
         onCard={handleOpenCard}
         onWithdrawal={handleOpenWithdrawal}
       />
-
       <main className="main-content">
-        <Header user={user} />
+        <Header />
 
         <BalanceCard
           wallet={wallet}
