@@ -383,3 +383,26 @@ button {
     gap: 8px;
   }
 }
+.transactions-feedback {
+  padding: 28px 0;
+  border-top: 1px solid #eef0f3;
+  color: #6b7280;
+  font-size: 13px;
+  text-align: center;
+}
+
+.transactions-feedback.error {
+  color: #b42318;
+}
+
+.status.pending {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.status.denied,
+.status.cancelled,
+.status.expired {
+  background: #fef3f2;
+  color: #b42318;
+}
