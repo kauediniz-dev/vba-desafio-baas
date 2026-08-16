@@ -11,12 +11,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { AxiosError, AxiosResponse } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
-
+import {
+  WalletTransactionResult,
+  WalletTransactionsResult,
+} from './interfaces/wallet-transactions-result.interface';
 import { GatewayLoginDto } from './dto/gateway-login.dto';
 import { GatewayAccount } from './entities/gateway-account.entity';
 import { GatewayLoginResponse } from './interfaces/gateway-login-response.interface';
 import { GatewayWalletResponse } from './interfaces/gateway-wallet-response.interface';
 import { TokenCryptoService } from './services/token-crypto.service';
+import { WalletTransactionsQueryDto } from './dto/wallet-transactions-query.dto';
+import { GatewayWalletTransactionsResponse } from './interfaces/gateway-wallet-transactions-response.interface';
 
 @Injectable()
 export class GatewayService {
@@ -64,8 +69,7 @@ export class GatewayService {
     }
 
     // O token precisa ser recuperado posteriormente para realizar
-    // outras chamadas ao gateway. Por isso utilizamos criptografia
-    // reversível em vez de hash.
+    // outras chamadas ao gateway
     const encryptedToken = this.tokenCryptoService.encrypt(
       response.data.access_token,
     );
@@ -148,6 +152,184 @@ export class GatewayService {
     return response.data;
   }
 
+  /**
+   * Recupera um campo string do metadata retornado pelo gateway.
+   *
+   * Como o metadata externo é do tipo Record<string, unknown>,
+   * validamos o tipo antes de utilizar o valor.
+   */
+  private getMetadataString(
+    metadata: Record<string, unknown>,
+    field: string,
+  ): string | null {
+    const value = metadata[field];
+
+    return typeof value === 'string' ? value : null;
+  }
+
+  /**
+   * Recupera um campo numérico do metadata retornado pelo gateway.
+   *
+   * Isso evita casts inseguros de valores provenientes
+   * da API externa.
+   */
+  private getMetadataNumber(
+    metadata: Record<string, unknown>,
+    field: string,
+  ): number | null {
+    const value = metadata[field];
+
+    return typeof value === 'number' ? value : null;
+  }
+
+  async getWalletTransactions(
+    userId: string,
+    query: WalletTransactionsQueryDto,
+  ): Promise<WalletTransactionsResult> {
+    const gatewayAccount = await this.gatewayAccountRepository.findOne({
+      where: { userId },
+    });
+
+    if (!gatewayAccount) {
+      throw new NotFoundException('Gateway account not found');
+    }
+
+    const accessToken = this.tokenCryptoService.decrypt(
+      gatewayAccount.accessToken,
+    );
+
+    const baseUrl = this.configService.getOrThrow<string>('LERA_BOX_BASE_URL');
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<GatewayWalletTransactionsResponse>(
+          `${baseUrl}/wallet/transactions`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+            params: {
+              limit: query.limit,
+              status: query.status,
+              type: query.type,
+            },
+          },
+        ),
+      );
+
+      const transactions = response.data.transactions.map(
+        (transaction): WalletTransactionResult => {
+          const metadata = transaction.metadata;
+
+          const result: WalletTransactionResult = {
+            id: transaction.id,
+            type: transaction.type,
+            status: transaction.status,
+            denialReason: transaction.denialReason,
+            amount: transaction.amount,
+            amountFormatted: transaction.amountFormatted,
+            description: transaction.description,
+            message: transaction.message,
+            createdAt: transaction.createdAt,
+          };
+
+          const externalReference = this.getMetadataString(
+            metadata,
+            'externalReference',
+          );
+
+          if (externalReference) {
+            result.externalReference = externalReference;
+          }
+
+          if (transaction.type === 'CREDIT_CARD') {
+            const cardBrand = this.getMetadataString(metadata, 'cardBrand');
+
+            const cardLast4 = this.getMetadataString(metadata, 'cardLast4');
+
+            const installments = this.getMetadataNumber(
+              metadata,
+              'installments',
+            );
+
+            const feePercent = this.getMetadataNumber(metadata, 'feePercent');
+
+            const feeAmountCents = this.getMetadataNumber(
+              metadata,
+              'feeAmountCents',
+            );
+
+            const netAmountCents = this.getMetadataNumber(
+              metadata,
+              'netAmountCents',
+            );
+
+            const grossAmountCents = this.getMetadataNumber(
+              metadata,
+              'grossAmountCents',
+            );
+
+            const installmentAmountCents = this.getMetadataNumber(
+              metadata,
+              'installmentAmountCents',
+            );
+
+            if (cardBrand) {
+              result.cardBrand = cardBrand;
+            }
+
+            if (cardLast4) {
+              result.cardLast4 = cardLast4;
+            }
+
+            if (installments !== null) {
+              result.installments = installments;
+            }
+
+            if (feePercent !== null) {
+              result.feePercent = feePercent;
+            }
+
+            if (feeAmountCents !== null) {
+              result.feeAmountCents = feeAmountCents;
+            }
+
+            if (netAmountCents !== null) {
+              result.netAmountCents = netAmountCents;
+            }
+
+            if (grossAmountCents !== null) {
+              result.grossAmountCents = grossAmountCents;
+            }
+
+            if (installmentAmountCents !== null) {
+              result.installmentAmountCents = installmentAmountCents;
+            }
+          }
+
+          if (transaction.type === 'PIX') {
+            const txid = this.getMetadataString(metadata, 'txid');
+
+            if (txid) {
+              result.txid = txid;
+            }
+          }
+
+          return result;
+        },
+      );
+
+      return {
+        walletId: response.data.walletId,
+        balance: response.data.balance,
+        balanceFormatted: response.data.balanceFormatted,
+        filters: response.data.filters,
+        transactions,
+      };
+    } catch (error: unknown) {
+      this.handleGatewayError(error);
+    }
+  }
   /**
    * Converte erros provenientes do gateway externo
    * em exceções HTTP controladas pela nossa API.
