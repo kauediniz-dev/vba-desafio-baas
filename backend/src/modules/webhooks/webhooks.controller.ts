@@ -12,8 +12,24 @@ export class WebhooksController {
   ): Promise<{ received: boolean }> {
     await this.webhooksService.handleEvent('PAYMENT_PIX', payload);
 
-    return {
-      received: true,
-    };
+    return { received: true };
+  }
+
+  @Post('card')
+  async handleCardWebhook(
+    @Body() payload: unknown,
+  ): Promise<{ received: boolean }> {
+    await this.webhooksService.handleEvent('PAYMENT_CARD', payload);
+
+    return { received: true };
+  }
+
+  @Post('withdrawal')
+  async handleWithdrawalWebhook(
+    @Body() payload: unknown,
+  ): Promise<{ received: boolean }> {
+    await this.webhooksService.handleEvent('WITHDRAWAL', payload);
+
+    return { received: true };
   }
 }
