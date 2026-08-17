@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { api } from "../../services/api";
 import type { User } from "../../models/interfaces/user.interface";
+import type { AuthResponse } from "../../models/interfaces/auth.interface";
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -21,19 +22,15 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     setError(null);
 
     try {
-      const userResponse = await api.get<User>("/users/by-email", {
-        params: {
-          email,
-        },
-      });
-
-      const user = userResponse.data;
-
-      await api.post(`/gateway/${user.id}/login`, {
+      const response = await api.post<AuthResponse>("/auth/login", {
+        email,
         document,
         password,
       });
 
+      const { accessToken, user } = response.data;
+
+      sessionStorage.setItem("lera-token", accessToken);
       sessionStorage.setItem("lera-user", JSON.stringify(user));
 
       onLogin(user);

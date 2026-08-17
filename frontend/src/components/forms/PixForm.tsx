@@ -50,15 +50,19 @@ export function PixForm({
 
       <form className="operation-form" onSubmit={onSubmit}>
         <label>
-          Valor em centavos
-          <input
-            type="number"
-            min="1"
-            value={amount}
-            onChange={(event) => onAmountChange(event.target.value)}
-            placeholder="15000"
-            required
-          />
+          Valor
+          <div className="currency-input">
+            <span>R$</span>
+
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => onAmountChange(event.target.value)}
+              placeholder="150,00"
+              required
+            />
+          </div>
         </label>
 
         <label>

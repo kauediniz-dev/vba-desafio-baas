@@ -915,3 +915,46 @@ button {
     justify-self: start;
   }
 }
+
+.currency-input {
+  display: flex;
+  align-items: center;
+
+  min-height: 46px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.currency-input:focus-within {
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.currency-input > span {
+  padding-left: 13px;
+
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.currency-input input {
+  flex: 1;
+  min-width: 0;
+
+  border: 0 !important;
+  box-shadow: none !important;
+
+  background: transparent;
+}
+
+.currency-input input:focus {
+  outline: none;
+}
