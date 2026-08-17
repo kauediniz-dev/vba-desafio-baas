@@ -38,6 +38,9 @@ function App() {
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
   const [walletError, setWalletError] = useState<string | null>(null);
 
+  const [transactionStatusFilter, setTransactionStatusFilter] = useState("");
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState("");
+
   const [isPixOpen, setIsPixOpen] = useState(false);
   const [pixAmount, setPixAmount] = useState("");
   const [pixDescription, setPixDescription] = useState("");
@@ -272,7 +275,42 @@ function App() {
         "/gateway/wallet/transactions",
         {
           params: {
-            limit: 5,
+            limit: 20,
+            ...(transactionStatusFilter && {
+              status: transactionStatusFilter,
+            }),
+            ...(transactionTypeFilter && {
+              type: transactionTypeFilter,
+            }),
+          },
+        },
+      );
+
+      setTransactions(response.data.transactions);
+    } catch {
+      setTransactionsError("Não foi possível carregar as transações.");
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  }
+
+  async function handleClearTransactionFilters() {
+    setTransactionStatusFilter("");
+    setTransactionTypeFilter("");
+
+    if (!user) {
+      return;
+    }
+
+    setIsLoadingTransactions(true);
+    setTransactionsError(null);
+
+    try {
+      const response = await api.get<TransactionsResponse>(
+        "/gateway/wallet/transactions",
+        {
+          params: {
+            limit: 20,
           },
         },
       );
@@ -567,6 +605,12 @@ function App() {
           transactions={transactions}
           isLoading={isLoadingTransactions}
           error={transactionsError}
+          statusFilter={transactionStatusFilter}
+          typeFilter={transactionTypeFilter}
+          onStatusFilterChange={setTransactionStatusFilter}
+          onTypeFilterChange={setTransactionTypeFilter}
+          onFilter={() => void handleRefreshTransactions()}
+          onClearFilters={() => void handleClearTransactionFilters()}
         />
       </main>
     </div>
