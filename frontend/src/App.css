@@ -958,3 +958,32 @@ button {
 .currency-input input:focus {
   outline: none;
 }
+
+.operation-result {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.operation-result > div {
+  min-width: 0;
+}
+
+.operation-result > div:has(span:first-child:nth-last-child(2)) {
+  /* mantém estrutura atual */
+}
+
+.withdrawal-status-button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .operation-result {
+    grid-template-columns: 1fr;
+  }
+
+  .withdrawal-status-button {
+    grid-column: 1;
+  }
+}

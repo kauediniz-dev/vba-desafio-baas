@@ -8,11 +8,12 @@ interface WithdrawalFormProps {
   description: string;
   externalReference: string;
   document: string;
-
+  lastCheckedAt: string | null;
   result: WithdrawalResult | null;
   error: string | null;
   isLoading: boolean;
-
+  isCheckingStatus: boolean;
+  onCheckStatus: () => void;
   onAmountChange: (value: string) => void;
   onPixKeyChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
@@ -32,12 +33,15 @@ export function WithdrawalForm({
   result,
   error,
   isLoading,
+  isCheckingStatus,
+  lastCheckedAt,
   onAmountChange,
   onPixKeyChange,
   onDescriptionChange,
   onExternalReferenceChange,
   onDocumentChange,
   onSubmit,
+  onCheckStatus,
   onClose,
 }: WithdrawalFormProps) {
   return (
@@ -153,6 +157,19 @@ export function WithdrawalForm({
               <span>Motivo da recusa</span>
               <strong>{result.denialReason}</strong>
             </div>
+          )}
+          <button
+            type="button"
+            className="secondary-button withdrawal-status-button"
+            onClick={onCheckStatus}
+            disabled={isCheckingStatus}
+          >
+            {isCheckingStatus ? "Consultando..." : "Consultar status"}
+          </button>
+          {lastCheckedAt && (
+            <small className="withdrawal-status-updated">
+              Status consultado às {lastCheckedAt}
+            </small>
           )}
         </div>
       )}
