@@ -32,6 +32,8 @@ function App() {
     null,
   );
 
+  const [isCheckingWithdrawal, setIsCheckingWithdrawal] = useState(false);
+
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
   const [walletError, setWalletError] = useState<string | null>(null);
@@ -65,6 +67,10 @@ function App() {
 
   const [cardBrand, setCardBrand] = useState<CardBrand>("VISA");
   const [cardFees, setCardFees] = useState<CardFee[]>([]);
+
+  const [withdrawalCheckedAt, setWithdrawalCheckedAt] = useState<string | null>(
+    null,
+  );
 
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [withdrawalPixKey, setWithdrawalPixKey] = useState("");
@@ -323,6 +329,53 @@ function App() {
     }
   }
 
+  async function handleCheckWithdrawalStatus() {
+    if (!withdrawalResult) {
+      return;
+    }
+
+    setIsCheckingWithdrawal(true);
+    setWithdrawalError(null);
+
+    try {
+      const response = await api.get<WithdrawalResult>(
+        `/withdrawals/${withdrawalResult.id}`,
+      );
+
+      setWithdrawalResult((currentResult) => {
+        if (!currentResult) {
+          return response.data;
+        }
+
+        return {
+          ...currentResult,
+          ...response.data,
+          externalReference:
+            response.data.externalReference || currentResult.externalReference,
+          walletBalance:
+            response.data.walletBalance ?? currentResult.walletBalance,
+          walletBalanceFormatted:
+            response.data.walletBalanceFormatted ||
+            currentResult.walletBalanceFormatted,
+        };
+      });
+
+      setWithdrawalCheckedAt(
+        new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+      );
+
+      await Promise.all([handleRefreshWallet(), handleRefreshTransactions()]);
+    } catch {
+      setWithdrawalError("Não foi possível consultar o status do saque.");
+    } finally {
+      setIsCheckingWithdrawal(false);
+    }
+  }
+
   async function handleCreateWithdrawal(
     event: React.FormEvent<HTMLFormElement>,
   ) {
@@ -493,6 +546,7 @@ function App() {
               description={withdrawalDescription}
               externalReference={withdrawalExternalReference}
               document={withdrawalDocument}
+              lastCheckedAt={withdrawalCheckedAt}
               result={withdrawalResult}
               error={withdrawalError}
               isLoading={isCreatingWithdrawal}
@@ -503,6 +557,8 @@ function App() {
               onDocumentChange={setWithdrawalDocument}
               onSubmit={handleCreateWithdrawal}
               onClose={() => setIsWithdrawalOpen(false)}
+              isCheckingStatus={isCheckingWithdrawal}
+              onCheckStatus={handleCheckWithdrawalStatus}
             />
           )}
         </div>
