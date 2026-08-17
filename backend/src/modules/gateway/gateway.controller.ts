@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 
-import { GatewayLoginDto } from './dto/gateway-login.dto';
+import type { AuthenticatedRequest } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WalletTransactionsQueryDto } from './dto/wallet-transactions-query.dto';
 import { GatewayService } from './gateway.service';
 import { WalletTransactionsResult } from './interfaces/wallet-transactions-result.interface';
@@ -9,28 +10,18 @@ import { WalletTransactionsResult } from './interfaces/wallet-transactions-resul
 export class GatewayController {
   constructor(private readonly gatewayService: GatewayService) {}
 
-  @Post(':userId/login')
-  async login(
-    @Param('userId') userId: string,
-    @Body() dto: GatewayLoginDto,
-  ): Promise<{ message: string }> {
-    await this.gatewayService.login(userId, dto);
-
-    return {
-      message: 'Gateway authenticated successfully',
-    };
+  @UseGuards(JwtAuthGuard)
+  @Get('wallet')
+  async getWallet(@Req() request: AuthenticatedRequest) {
+    return this.gatewayService.getWallet(request.user.sub);
   }
 
-  @Get(':userId/wallet')
-  async getWallet(@Param('userId') userId: string) {
-    return this.gatewayService.getWallet(userId);
-  }
-
-  @Get(':userId/wallet/transactions')
+  @UseGuards(JwtAuthGuard)
+  @Get('wallet/transactions')
   async getWalletTransactions(
-    @Param('userId') userId: string,
+    @Req() request: AuthenticatedRequest,
     @Query() query: WalletTransactionsQueryDto,
   ): Promise<WalletTransactionsResult> {
-    return await this.gatewayService.getWalletTransactions(userId, query);
+    return this.gatewayService.getWalletTransactions(request.user.sub, query);
   }
 }

@@ -19,6 +19,11 @@ import type {
   Transaction,
   TransactionsResponse,
 } from "./models/interfaces/transaction.interface";
+import type {
+  CardBrand,
+  CardFee,
+  FeesResponse,
+} from "./models/interfaces/fee.interface";
 
 function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -51,13 +56,15 @@ function App() {
   const [expiryYear, setExpiryYear] = useState("");
   const [cvv, setCvv] = useState("");
   const [installments, setInstallments] = useState("1");
-  const [feePercent, setFeePercent] = useState("0");
 
   const [cardResult, setCardResult] = useState<CardResult | null>(null);
   const [isCreatingCard, setIsCreatingCard] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
 
   const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
+
+  const [cardBrand, setCardBrand] = useState<CardBrand>("VISA");
+  const [cardFees, setCardFees] = useState<CardFee[]>([]);
 
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [withdrawalPixKey, setWithdrawalPixKey] = useState("");
@@ -76,6 +83,9 @@ function App() {
     "pix" | "card" | "withdrawal" | null
   >(null);
 
+  const selectedCardFee =
+    cardFees.find((fee) => fee.installments === Number(installments)) ?? null;
+
   const [user, setUser] = useState<User | null>(() => {
     const storedUser = sessionStorage.getItem("lera-user");
 
@@ -92,16 +102,43 @@ function App() {
   });
 
   useEffect(() => {
+    let ignore = false;
+
+    async function fetchCardFees() {
+      try {
+        const response = await api.get<FeesResponse>("/checkout/fees", {
+          params: {
+            brand: cardBrand,
+          },
+        });
+
+        if (!ignore) {
+          setCardFees(response.data.fees);
+        }
+      } catch {
+        if (!ignore) {
+          setCardFees([]);
+        }
+      }
+    }
+
+    void fetchCardFees();
+
+    return () => {
+      ignore = true;
+    };
+  }, [cardBrand]);
+
+  useEffect(() => {
     if (!user) {
       return;
     }
 
-    const userId = user.id;
     let ignore = false;
 
     async function fetchWallet() {
       try {
-        const response = await api.get<Wallet>(`/gateway/${userId}/wallet`);
+        const response = await api.get<Wallet>("/gateway/wallet");
 
         if (!ignore) {
           setWallet(response.data);
@@ -130,13 +167,12 @@ function App() {
       return;
     }
 
-    const userId = user.id;
     let ignore = false;
 
     async function fetchTransactions() {
       try {
         const response = await api.get<TransactionsResponse>(
-          `/gateway/${userId}/wallet/transactions`,
+          "/gateway/wallet/transactions",
           {
             params: {
               limit: 5,
@@ -175,7 +211,7 @@ function App() {
     setWalletError(null);
 
     try {
-      const response = await api.get<Wallet>(`/gateway/${user.id}/wallet`);
+      const response = await api.get<Wallet>("/gateway/wallet");
 
       setWallet(response.data);
     } catch {
@@ -200,8 +236,8 @@ function App() {
     setPixResult(null);
 
     try {
-      const response = await api.post<PixResult>(`/checkout/${user.id}/pix`, {
-        amount: Number(pixAmount),
+      const response = await api.post<PixResult>("/checkout/pix", {
+        amount: parseCurrencyToCents(pixAmount),
         description: pixDescription,
         payerDocument: pixPayerDocument,
         externalReference: pixExternalReference,
@@ -227,7 +263,7 @@ function App() {
 
     try {
       const response = await api.get<TransactionsResponse>(
-        `/gateway/${user.id}/wallet/transactions`,
+        "/gateway/wallet/transactions",
         {
           params: {
             limit: 5,
@@ -250,22 +286,27 @@ function App() {
       return;
     }
 
+    if (!selectedCardFee) {
+      setCardError("Selecione uma combinação válida de parcelas.");
+      return;
+    }
+
     setIsCreatingCard(true);
     setCardError(null);
     setCardResult(null);
 
     try {
-      const response = await api.post<CardResult>(`/checkout/${user.id}/card`, {
-        amount: Number(cardAmount),
+      const response = await api.post<CardResult>("/checkout/card", {
+        amount: parseCurrencyToCents(cardAmount),
         description: cardDescription,
         externalReference: cardExternalReference,
-        cardNumber,
+        cardNumber: cardNumber.replace(/\D/g, ""),
         cardHolder,
         expiryMonth,
         expiryYear,
         cvv,
         installments: Number(installments),
-        feePercent: Number(feePercent),
+        feePercent: selectedCardFee.feePercent,
       });
 
       setCardResult(response.data);
@@ -296,17 +337,13 @@ function App() {
     setWithdrawalResult(null);
 
     try {
-      const response = await api.post<WithdrawalResult>(
-        `/withdrawals/${user.id}`,
-        {
-          amount: Number(withdrawalAmount),
-          pixKey: withdrawalPixKey,
-          description: withdrawalDescription,
-          externalReference: withdrawalExternalReference,
-          document: withdrawalDocument,
-        },
-      );
-
+      const response = await api.post<WithdrawalResult>("/withdrawals", {
+        amount: parseCurrencyToCents(withdrawalAmount),
+        pixKey: withdrawalPixKey,
+        description: withdrawalDescription,
+        externalReference: withdrawalExternalReference,
+        document: withdrawalDocument,
+      });
       setWithdrawalResult(response.data);
 
       await Promise.all([handleRefreshWallet(), handleRefreshTransactions()]);
@@ -360,6 +397,15 @@ function App() {
 
     setActiveSection("withdrawal");
     scrollToOperation();
+  }
+
+  function parseCurrencyToCents(value: string) {
+    const normalized = value
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .replace(/[^\d.]/g, "");
+
+    return Math.round(Number(normalized) * 100);
   }
 
   return (
@@ -416,7 +462,9 @@ function App() {
               expiryYear={expiryYear}
               cvv={cvv}
               installments={installments}
-              feePercent={feePercent}
+              brand={cardBrand}
+              fees={cardFees}
+              selectedFee={selectedCardFee}
               result={cardResult}
               error={cardError}
               isLoading={isCreatingCard}
@@ -428,8 +476,11 @@ function App() {
               onExpiryMonthChange={setExpiryMonth}
               onExpiryYearChange={setExpiryYear}
               onCvvChange={setCvv}
+              onBrandChange={(brand: CardBrand) => {
+                setCardBrand(brand);
+                setInstallments("1");
+              }}
               onInstallmentsChange={setInstallments}
-              onFeePercentChange={setFeePercent}
               onSubmit={handleCreateCard}
               onClose={() => setIsCardOpen(false)}
             />

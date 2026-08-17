@@ -22,33 +22,23 @@ import { GatewayWithdrawalResponse } from './interfaces/gateway-withdrawal-respo
 @Injectable()
 export class WithdrawalsService {
   constructor(
-    // Cliente HTTP usado para chamar a API da BranchPay.
     private readonly httpService: HttpService,
 
-    // Permite acessar configurações da aplicação, como a URL do gateway.
     private readonly configService: ConfigService,
 
-    // Serviço usado para descriptografar o Bearer token salvo no banco.
     private readonly tokenCryptoService: TokenCryptoService,
 
-    // Repository da conta do gateway.
     @InjectRepository(GatewayAccount)
     private readonly gatewayAccountRepository: Repository<GatewayAccount>,
 
-    // Repository responsável pela tabela withdrawals.
     @InjectRepository(Withdrawal)
     private readonly withdrawalRepository: Repository<Withdrawal>,
   ) {}
 
-  /**
-   * Solicita um saque no gateway externo e registra o resultado
-   * no banco de dados local.
-   */
   async create(
     userId: string,
     dto: CreateWithdrawalDto,
   ): Promise<CreateWithdrawalResult> {
-    // Evita processar duas vezes a mesma referência.
     const existingWithdrawal = await this.withdrawalRepository.findOne({
       where: {
         externalReference: dto.externalReference,
@@ -59,7 +49,6 @@ export class WithdrawalsService {
       throw new ConflictException('External reference already exists');
     }
 
-    // Recupera a conta do gateway relacionada ao usuário local.
     const gatewayAccount = await this.gatewayAccountRepository.findOne({
       where: { userId },
     });
@@ -68,8 +57,6 @@ export class WithdrawalsService {
       throw new NotFoundException('Gateway account not found');
     }
 
-    // O token permanece criptografado no banco e só é
-    // descriptografado em memória no momento da requisição.
     const accessToken = this.tokenCryptoService.decrypt(
       gatewayAccount.accessToken,
     );
@@ -79,7 +66,6 @@ export class WithdrawalsService {
     let gatewayResponse: GatewayWithdrawalResponse;
 
     try {
-      // Solicita o saque na BranchPay.
       const response = await firstValueFrom(
         this.httpService.post<GatewayWithdrawalResponse>(
           `${baseUrl}/withdrawals`,
@@ -101,13 +87,11 @@ export class WithdrawalsService {
       throw error;
     }
 
-    // Traduz o status externo para o enum usado internamente.
     const status =
       gatewayResponse.status === 'APPROVED'
         ? WithdrawalStatus.APPROVED
         : WithdrawalStatus.DENIED;
 
-    // Salva apenas os dados necessários para rastrear o saque.
     const withdrawal = this.withdrawalRepository.create({
       userId,
       externalReference: gatewayResponse.externalReference,
@@ -118,7 +102,84 @@ export class WithdrawalsService {
 
     await this.withdrawalRepository.save(withdrawal);
 
-    // Retorna somente os dados seguros e úteis para o cliente.
+    return {
+      id: gatewayResponse.id,
+      status: gatewayResponse.status,
+      denialReason: gatewayResponse.denialReason,
+      amount: gatewayResponse.amount,
+      amountFormatted: gatewayResponse.amountFormatted,
+      description: gatewayResponse.description,
+      message: gatewayResponse.message,
+      externalReference: gatewayResponse.externalReference,
+      walletBalance: gatewayResponse.walletBalance,
+      walletBalanceFormatted: gatewayResponse.walletBalanceFormatted,
+      createdAt: gatewayResponse.createdAt,
+    };
+  }
+
+  async findById(
+    userId: string,
+    withdrawalId: string,
+  ): Promise<CreateWithdrawalResult> {
+    const withdrawal = await this.withdrawalRepository.findOne({
+      where: {
+        userId,
+        gatewayWithdrawalId: withdrawalId,
+      },
+    });
+
+    if (!withdrawal) {
+      throw new NotFoundException('Withdrawal not found');
+    }
+
+    const gatewayAccount = await this.gatewayAccountRepository.findOne({
+      where: { userId },
+    });
+
+    if (!gatewayAccount) {
+      throw new NotFoundException('Gateway account not found');
+    }
+
+    const accessToken = this.tokenCryptoService.decrypt(
+      gatewayAccount.accessToken,
+    );
+
+    const baseUrl = this.configService.getOrThrow<string>('LERA_BOX_BASE_URL');
+
+    let gatewayResponse: GatewayWithdrawalResponse;
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<GatewayWithdrawalResponse>(
+          `${baseUrl}/withdrawals/${withdrawalId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        ),
+      );
+
+      gatewayResponse = response.data;
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 404) {
+          throw new NotFoundException('Withdrawal not found');
+        }
+
+        throw new BadGatewayException('Failed to retrieve withdrawal');
+      }
+
+      throw error;
+    }
+
+    withdrawal.status =
+      gatewayResponse.status === 'APPROVED'
+        ? WithdrawalStatus.APPROVED
+        : WithdrawalStatus.DENIED;
+
+    await this.withdrawalRepository.save(withdrawal);
+
     return {
       id: gatewayResponse.id,
       status: gatewayResponse.status,

@@ -20,7 +20,10 @@ import { OrderStatus } from '../orders/enums/order-status.enum';
 import { Transaction } from '../transactions/entities/transaction.entity';
 import { TransactionStatus } from '../transactions/enum/transaction-status.enum';
 import { TransactionType } from '../transactions/enum/transaction-type.enum';
-
+import {
+  CardBrand,
+  GatewayFeesResponse,
+} from './interfaces/gateway-fees-response.interface';
 import { CreatePixCheckoutDto } from './dto/create-pix-checkout.dto';
 import { CheckoutLink } from './entities/checkout-link.entity';
 import { CheckoutStatus } from './enums/checkout-status.enum';
@@ -42,6 +45,26 @@ export class CheckoutService {
     @InjectRepository(CheckoutLink)
     private readonly checkoutLinkRepository: Repository<CheckoutLink>,
   ) {}
+
+  async getCardFees(brand?: CardBrand): Promise<GatewayFeesResponse> {
+    const baseUrl = this.configService.getOrThrow<string>('LERA_BOX_BASE_URL');
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<GatewayFeesResponse>(`${baseUrl}/fees`, {
+          params: brand ? { brand } : undefined,
+        }),
+      );
+
+      return response.data;
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        throw new BadGatewayException('Failed to fetch card fees');
+      }
+
+      throw error;
+    }
+  }
 
   async createPix(
     userId: string,

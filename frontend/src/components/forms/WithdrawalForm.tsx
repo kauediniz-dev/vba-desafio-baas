@@ -55,15 +55,19 @@ export function WithdrawalForm({
 
       <form className="operation-form" onSubmit={onSubmit}>
         <label>
-          Valor em centavos
-          <input
-            type="number"
-            min="1"
-            value={amount}
-            onChange={(event) => onAmountChange(event.target.value)}
-            placeholder="10000"
-            required
-          />
+          Valor
+          <div className="currency-input">
+            <span>R$</span>
+
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => onAmountChange(event.target.value)}
+              placeholder="100,00"
+              required
+            />
+          </div>
         </label>
 
         <label>

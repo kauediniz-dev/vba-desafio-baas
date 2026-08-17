@@ -8,6 +8,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { WithdrawalsModule } from './modules/withdrawals/withdrawals.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
     TransactionsModule,
     WithdrawalsModule,
     WebhooksModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

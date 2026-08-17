@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 
 import type { CardResult } from "../../models/interfaces/card.interface";
+import type { CardBrand, CardFee } from "../../models/interfaces/fee.interface";
 
 interface CardFormProps {
   amount: string;
@@ -12,7 +13,10 @@ interface CardFormProps {
   expiryYear: string;
   cvv: string;
   installments: string;
-  feePercent: string;
+
+  brand: CardBrand;
+  fees: CardFee[];
+  selectedFee: CardFee | null;
 
   result: CardResult | null;
   error: string | null;
@@ -26,8 +30,8 @@ interface CardFormProps {
   onExpiryMonthChange: (value: string) => void;
   onExpiryYearChange: (value: string) => void;
   onCvvChange: (value: string) => void;
+  onBrandChange: (value: CardBrand) => void;
   onInstallmentsChange: (value: string) => void;
-  onFeePercentChange: (value: string) => void;
 
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onClose: () => void;
@@ -43,7 +47,9 @@ export function CardForm({
   expiryYear,
   cvv,
   installments,
-  feePercent,
+  brand,
+  fees,
+  selectedFee,
   result,
   error,
   isLoading,
@@ -55,8 +61,8 @@ export function CardForm({
   onExpiryMonthChange,
   onExpiryYearChange,
   onCvvChange,
+  onBrandChange,
   onInstallmentsChange,
-  onFeePercentChange,
   onSubmit,
   onClose,
 }: CardFormProps) {
@@ -82,15 +88,19 @@ export function CardForm({
 
           <div className="card-grid-two">
             <label>
-              Valor em centavos
-              <input
-                type="number"
-                min="1"
-                value={amount}
-                onChange={(event) => onAmountChange(event.target.value)}
-                placeholder="25000"
-                required
-              />
+              Valor
+              <div className="currency-input">
+                <span>R$</span>
+
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(event) => onAmountChange(event.target.value)}
+                  placeholder="250,00"
+                  required
+                />
+              </div>
             </label>
 
             <label>
@@ -131,10 +141,17 @@ export function CardForm({
             <input
               type="text"
               inputMode="numeric"
-              minLength={13}
-              maxLength={19}
+              maxLength={23}
               value={cardNumber}
-              onChange={(event) => onCardNumberChange(event.target.value)}
+              onChange={(event) => {
+                const digits = event.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 19);
+
+                const formatted = digits.replace(/(.{4})/g, "$1 ").trim();
+
+                onCardNumberChange(formatted);
+              }}
               placeholder="0000 0000 0000 0000"
               autoComplete="cc-number"
               required
@@ -215,29 +232,41 @@ export function CardForm({
 
           <div className="card-grid-two">
             <label>
-              Parcelas
-              <input
-                type="number"
-                min="1"
-                value={installments}
-                onChange={(event) => onInstallmentsChange(event.target.value)}
-                required
-              />
+              Bandeira
+              <select
+                value={brand}
+                onChange={(event) =>
+                  onBrandChange(event.target.value as CardBrand)
+                }
+              >
+                <option value="VISA">Visa</option>
+                <option value="MASTERCARD">Mastercard</option>
+                <option value="ELO">Elo</option>
+              </select>
             </label>
 
             <label>
-              Taxa (%)
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={feePercent}
-                onChange={(event) => onFeePercentChange(event.target.value)}
-                placeholder="3.19"
+              Parcelas
+              <select
+                value={installments}
+                onChange={(event) => onInstallmentsChange(event.target.value)}
                 required
-              />
+              >
+                {fees.map((fee) => (
+                  <option key={fee.id} value={fee.installments}>
+                    {fee.installments}x — {fee.feePercentFormatted}
+                  </option>
+                ))}
+              </select>
             </label>
+          </div>
+
+          <div className="card-fee-summary">
+            <span>Taxa aplicada</span>
+
+            <strong>
+              {selectedFee ? selectedFee.feePercentFormatted : "--"}
+            </strong>
           </div>
         </div>
 
@@ -246,7 +275,7 @@ export function CardForm({
         <button
           type="submit"
           className="operation-submit card-submit"
-          disabled={isLoading}
+          disabled={isLoading || !selectedFee}
         >
           {isLoading ? "Processando..." : "Processar pagamento"}
         </button>
