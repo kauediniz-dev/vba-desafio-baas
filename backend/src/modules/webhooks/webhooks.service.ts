@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
 import { createHash } from 'node:crypto';
-import { WebhookEvent } from './entities/webhook-event.entity';
+import { DataSource, Repository } from 'typeorm';
+
 import { Order } from '../orders/entities/order.entity';
-import { Transaction } from '../transactions/entities/transaction.entity';
 import { OrderStatus } from '../orders/enums/order-status.enum';
+import { Transaction } from '../transactions/entities/transaction.entity';
 import { TransactionStatus } from '../transactions/enum/transaction-status.enum';
+import { Withdrawal } from '../withdrawals/entities/withdrawal.entity';
+import { WithdrawalStatus } from '../withdrawals/enum/withdrawal-status.enum';
+
+import { WebhookEvent } from './entities/webhook-event.entity';
 
 @Injectable()
 export class WebhooksService {
@@ -15,12 +19,6 @@ export class WebhooksService {
 
     @InjectRepository(WebhookEvent)
     private readonly webhookEventRepository: Repository<WebhookEvent>,
-
-    @InjectRepository(Order)
-    private readonly orderRepository: Repository<Order>,
-
-    @InjectRepository(Transaction)
-    private readonly transactionRepository: Repository<Transaction>,
   ) {}
 
   async handleEvent(eventType: string, payload: unknown): Promise<void> {
@@ -36,6 +34,7 @@ export class WebhooksService {
       .digest('hex');
 
     const externalReference = this.getStringField(payload, 'externalReference');
+
     const existingEvent = await this.webhookEventRepository.findOne({
       where: { gatewayEventId },
     });
@@ -61,8 +60,13 @@ export class WebhooksService {
       return;
     }
 
-    const orderStatus = this.mapOrderStatus(status);
+    if (eventType === 'WITHDRAWAL') {
+      await this.handleWithdrawalEvent(webhookEvent, externalReference, status);
 
+      return;
+    }
+
+    const orderStatus = this.mapOrderStatus(status);
     const transactionStatus = this.mapTransactionStatus(status);
 
     if (!orderStatus || !transactionStatus) {
@@ -103,6 +107,39 @@ export class WebhooksService {
     });
   }
 
+  private async handleWithdrawalEvent(
+    webhookEvent: WebhookEvent,
+    externalReference: string,
+    status: string,
+  ): Promise<void> {
+    const withdrawalStatus = this.mapWithdrawalStatus(status);
+
+    if (!withdrawalStatus) {
+      return;
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const withdrawal = await manager.findOne(Withdrawal, {
+        where: {
+          externalReference,
+        },
+      });
+
+      if (!withdrawal) {
+        return;
+      }
+
+      withdrawal.status = withdrawalStatus;
+
+      await manager.save(withdrawal);
+
+      webhookEvent.processed = true;
+      webhookEvent.processedAt = new Date();
+
+      await manager.save(webhookEvent);
+    });
+  }
+
   private normalizePayload(payload: unknown): Record<string, unknown> {
     if (
       typeof payload === 'object' &&
@@ -116,6 +153,7 @@ export class WebhooksService {
       value: payload,
     };
   }
+
   private getStringField(payload: unknown, field: string): string | null {
     if (
       typeof payload !== 'object' ||
@@ -129,6 +167,7 @@ export class WebhooksService {
 
     return typeof value === 'string' ? value : null;
   }
+
   private mapOrderStatus(status: string): OrderStatus | null {
     if (status === 'APPROVED') {
       return OrderStatus.APPROVED;
@@ -148,6 +187,18 @@ export class WebhooksService {
 
     if (status === 'DENIED') {
       return TransactionStatus.DENIED;
+    }
+
+    return null;
+  }
+
+  private mapWithdrawalStatus(status: string): WithdrawalStatus | null {
+    if (status === 'APPROVED') {
+      return WithdrawalStatus.APPROVED;
+    }
+
+    if (status === 'DENIED') {
+      return WithdrawalStatus.DENIED;
     }
 
     return null;

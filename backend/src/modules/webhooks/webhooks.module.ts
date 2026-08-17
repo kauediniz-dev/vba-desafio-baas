@@ -1,14 +1,18 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { Order } from '../orders/entities/order.entity';
+import { Transaction } from '../transactions/entities/transaction.entity';
+import { Withdrawal } from '../withdrawals/entities/withdrawal.entity';
+
 import { WebhookEvent } from './entities/webhook-event.entity';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
-import { Order } from '../orders/entities/order.entity';
-import { Transaction } from '../transactions/entities/transaction.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([WebhookEvent, Order, Transaction])],
+  imports: [
+    TypeOrmModule.forFeature([WebhookEvent, Order, Transaction, Withdrawal]),
+  ],
   controllers: [WebhooksController],
   providers: [WebhooksService],
 })
