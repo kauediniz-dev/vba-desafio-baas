@@ -987,3 +987,173 @@ button {
     grid-column: 1;
   }
 }
+
+.transaction-filters-card {
+  margin-top: 24px;
+  padding: 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.05);
+}
+
+.transaction-filters-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.transaction-filter-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.transaction-filters-heading h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+}
+
+.transaction-filters-heading p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.transactions-filters {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1fr)
+    minmax(180px, 1fr)
+    auto
+    auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.transactions-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.transactions-filters select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  outline: none;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.transactions-filters select:hover {
+  border-color: #9ca3af;
+}
+
+.transactions-filters select:focus {
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.transaction-clear-button,
+.transaction-filter-button {
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 10px;
+  white-space: nowrap;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.transaction-clear-button {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+}
+
+.transaction-filter-button {
+  border: 0;
+  background: #111827;
+  color: #ffffff;
+}
+
+.transaction-filter-button:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.transaction-filter-button:disabled,
+.transaction-clear-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.transaction-type {
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.transaction-type.pix {
+  background: #ecfeff;
+  color: #0891b2;
+}
+
+.transaction-type.credit_card {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.transaction-type.withdrawal {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.transaction-value {
+  text-align: right;
+}
+
+.transaction-value.withdrawal {
+  color: #b42318;
+}
+
+@media (max-width: 900px) {
+  .transactions-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .transaction-clear-button,
+  .transaction-filter-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .transaction-filters-card {
+    padding: 20px;
+  }
+
+  .transactions-filters {
+    grid-template-columns: 1fr;
+  }
+}
