@@ -20,22 +20,28 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'mysql',
-        host: configService.get<string>('DB_HOST'),
-        port: Number(configService.get<string>('DB_PORT')),
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_DATABASE'),
 
-        ssl:
-          configService.get<string>('DB_SSL') === 'true'
-            ? { rejectUnauthorized: false }
-            : undefined,
+      useFactory: (configService: ConfigService) => {
+        console.log('DB_HOST:', JSON.stringify(process.env.DB_HOST));
+        console.log('DB_PORT:', JSON.stringify(process.env.DB_PORT));
+        console.log('DB_DATABASE:', JSON.stringify(process.env.DB_DATABASE));
 
-        autoLoadEntities: true,
-        synchronize: true,
-      }),
+        return {
+          type: 'mysql',
+          host: configService.get<string>('DB_HOST'),
+          port: Number(configService.get<string>('DB_PORT')),
+          username: configService.get<string>('DB_USERNAME'),
+          password: configService.get<string>('DB_PASSWORD'),
+          database: configService.get<string>('DB_DATABASE'),
+
+          ssl: {
+            rejectUnauthorized: false,
+          },
+
+          autoLoadEntities: true,
+          synchronize: false,
+        };
+      },
     }),
     GatewayModule,
     UsersModule,
